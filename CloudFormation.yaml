@@ -1,0 +1,1042 @@
+Parameters:
+  KGFLIX:
+    Description: KeyPair
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: KeyPair
+
+  DBID: 
+    Type: String
+    Default: "admin"
+
+  DBPW:
+    Type: String 
+    Default: "password"
+
+  map:
+    Type: String
+
+
+Resources:
+  
+  KGFLIXVPC:                    # create vpc
+    Type: AWS::EC2::VPC
+    Properties:
+     CidrBlock: 192.168.0.0/16
+     EnableDnsSupport: true
+     EnableDnsHostnames: true
+     Tags:
+        - Key: Name
+          Value: KGFLIXVPC
+  
+  KGCINEMAVPC:                    
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: KGCINEMAVPC
+      
+  VPCPeering:
+    Type: AWS::EC2::VPCPeeringConnection
+    Properties: 
+      PeerVpcId: !Ref KGFLIXVPC
+      VpcId: !Ref KGCINEMAVPC
+    
+  KGFLIXIGW:                     # create Inernetgateway
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: KGFLIXIGW
+
+  KGFLIXIGWAttachment:          
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref KGFLIXIGW
+      VpcId: !Ref KGFLIXVPC
+        
+  KGCINEMAIGW:                     
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: KGCINEMAIGW
+
+  KGCINEMAIGWAttachment:          
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref KGCINEMAIGW
+      VpcId: !Ref KGCINEMAVPC
+
+  KGFLIXPublicSubnet1:                # public subnet
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref KGFLIXVPC
+      CidrBlock: 192.168.0.0/24
+      AvailabilityZone: "ap-northeast-2a"
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: KGFLIX public subnet1
+    
+  KGFLIXPublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref KGFLIXVPC
+      CidrBlock: 192.168.3.0/24
+      AvailabilityZone: "ap-northeast-2c"
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: KGFLIX public subnet2
+
+  KGCINEMAPublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref KGCINEMAVPC
+      CidrBlock: 10.0.0.0/24
+      AvailabilityZone: "ap-northeast-2a"
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: KGCINEMA public subnet1
+        
+  KGCINEMAPublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref KGCINEMAVPC
+      CidrBlock: 10.0.3.0/24
+      AvailabilityZone: "ap-northeast-2c"
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: KGCINEMA public subnet2
+
+  KGFLIXPublicRT:                  # KGFLIX public subnet route table
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref KGFLIXVPC
+      Tags:
+        - Key: Name
+          Value: KGFLIX Public RT
+
+  KGFLIXPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: KGFLIXIGWAttachment
+    Properties:
+      RouteTableId: !Ref KGFLIXPublicRT
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref KGFLIXIGW
+
+  KGFLIXPublicSubnetRTAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref KGFLIXPublicRT
+      SubnetId: !Ref KGFLIXPublicSubnet1 
+      
+  KGFLIXPublicSubnetRTAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref KGFLIXPublicRT
+      SubnetId: !Ref KGFLIXPublicSubnet2
+
+  KGCINEMAPublicRT:                  # KGCINEMA public subnet route table
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref KGCINEMAVPC
+      Tags:
+        - Key: Name
+          Value: KGCINEMA Public RT
+
+  KGCINEMAPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: KGCINEMAIGWAttachment
+    Properties:
+      RouteTableId: !Ref KGCINEMAPublicRT
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref KGCINEMAIGW
+
+  KGCINEMAPublicSubnetRTAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref KGCINEMAPublicRT
+      SubnetId: !Ref KGCINEMAPublicSubnet1
+
+  KGCINEMAPublicSubnetRTAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref KGCINEMAPublicRT
+      SubnetId: !Ref KGCINEMAPublicSubnet2
+
+  KGFLIXPrivateSubnet1:               # KGFLIX create private subnet
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref KGFLIXVPC
+      CidrBlock: 192.168.1.0/24
+      AvailabilityZone: "ap-northeast-2a"
+      Tags:
+        - Key: Name
+          Value: KGFLIX private subnet1
+
+  KGFLIXPrivateSubnet2:               
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref KGFLIXVPC
+      CidrBlock: 192.168.2.0/24
+      AvailabilityZone: "ap-northeast-2a"
+      Tags:
+        - Key: Name
+          Value: KGFLIX private subnet2
+
+  KGFLIXPrivateSubnet3:               
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref KGFLIXVPC
+      CidrBlock: 192.168.4.0/24
+      AvailabilityZone: "ap-northeast-2c"
+      Tags:
+        - Key: Name
+          Value: KGFLIX private subnet3
+
+  KGFLIXPrivateSubnet4:               
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref KGFLIXVPC
+      CidrBlock: 192.168.5.0/24
+      AvailabilityZone: "ap-northeast-2c"
+      Tags:
+        - Key: Name
+          Value: KGFLIX private subnet4
+
+  KGCINEMAPrivateSubnet1:               # KGCINEMA create private subnet
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref KGCINEMAVPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: "ap-northeast-2a"
+      Tags:
+        - Key: Name
+          Value: KGCINEMA private subnet1
+
+  KGCINEMAPrivateSubnet2:               
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref KGCINEMAVPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: "ap-northeast-2a"
+      Tags:
+        - Key: Name
+          Value: KGCINEMA private subnet2
+
+  KGCINEMAPrivateSubnet3:               
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref KGCINEMAVPC
+      CidrBlock: 10.0.4.0/24
+      AvailabilityZone: "ap-northeast-2c"
+      Tags:
+        - Key: Name
+          Value: KGCINEMA private subnet3
+
+  KGCINEMAPrivateSubnet4:               
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref KGCINEMAVPC
+      CidrBlock: 10.0.5.0/24
+      AvailabilityZone: "ap-northeast-2c"
+      Tags:
+        - Key: Name
+          Value: KGCINEMA private subnet4
+
+  KGFLIXPrivateRT1:                  # KGFLIX create private route table
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref KGFLIXVPC
+      Tags:
+        - Key: Name
+          Value: KGFLIX Private RT1
+
+  KGFLIXPrivateRoute1:
+    Type: AWS::EC2::Route 
+    DependsOn: NatInstance1  
+    Properties:
+      RouteTableId: !Ref KGFLIXPrivateRT1
+      DestinationCidrBlock: 0.0.0.0/0
+      InstanceId: !Ref NatInstance1
+
+  KGFLIXPrivateRT2:                  # KGFLIX create private route table
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref KGFLIXVPC
+      Tags:
+        - Key: Name
+          Value: KGFLIX Private RT2
+
+  KGFLIXPrivateRoute2:
+    Type: AWS::EC2::Route
+    DependsOn: NatInstance2   
+    Properties:
+      RouteTableId: !Ref KGFLIXPrivateRT2
+      DestinationCidrBlock: 0.0.0.0/0
+      InstanceId: !Ref NatInstance2
+
+  KGFLIXPrivateSubnetRTAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref KGFLIXPrivateRT1
+      SubnetId: !Ref KGFLIXPrivateSubnet1
+
+  KGFLIXPrivateSubnetRTAssociationa2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref KGFLIXPrivateRT1
+      SubnetId: !Ref KGFLIXPrivateSubnet2
+
+  KGFLIXPrivateSubnetRTAssociationc3:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref KGFLIXPrivateRT2
+      SubnetId: !Ref KGFLIXPrivateSubnet3
+
+  KGFLIXPrivateSubnetRTAssociation4:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref KGFLIXPrivateRT2
+      SubnetId: !Ref KGFLIXPrivateSubnet4            
+
+  KGCINEMAPrivateRT1:                  # KGCINEMA create private route table
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref KGCINEMAVPC
+      Tags:
+        - Key: Name
+          Value: KGCINEMA Private RT1
+
+  KGCINEMAPrivateRoute1:
+    Type: AWS::EC2::Route 
+    DependsOn: NatInstance3  
+    Properties:
+      RouteTableId: !Ref KGCINEMAPrivateRT1
+      DestinationCidrBlock: 0.0.0.0/0
+      InstanceId: !Ref NatInstance3
+
+  KGCINEMAPrivateRT2:                  
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref KGCINEMAVPC
+      Tags:
+        - Key: Name
+          Value: KGCINEMA Private RT2
+
+  KGCINEMAPrivateRoute2:
+    Type: AWS::EC2::Route
+    DependsOn: NatInstance4   
+    Properties:
+      RouteTableId: !Ref KGCINEMAPrivateRT2
+      DestinationCidrBlock: 0.0.0.0/0
+      InstanceId: !Ref NatInstance4
+
+  KGCINEMAPrivateSubnetRTAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref KGCINEMAPrivateRT1
+      SubnetId: !Ref KGCINEMAPrivateSubnet1
+
+  KGCINEMAPrivateSubnetRTAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref KGCINEMAPrivateRT1
+      SubnetId: !Ref KGCINEMAPrivateSubnet2
+
+  KGCINEMAPrivateSubnetRTAssociation3:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref KGCINEMAPrivateRT2
+      SubnetId: !Ref KGCINEMAPrivateSubnet3
+
+  KGCINEMAPrivateSubnetRTAssociation4:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref KGCINEMAPrivateRT2
+      SubnetId: !Ref KGCINEMAPrivateSubnet4
+
+  KGFLIXWebSG:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDescription: KGFLIXWebSGSG
+        VpcId: !Ref KGFLIXVPC
+        SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          SourceSecurityGroupId: !Ref KGFLIXELBSG
+        - IpProtocol: tcp
+          FromPort: '443'
+          ToPort: '443'
+          SourceSecurityGroupId: !Ref KGFLIXELBSG
+        - IpProtocol: tcp
+          FromPort: '0'
+          ToPort: '0'
+          SourceSecurityGroupId: !Ref KGFLIXBastionHostSG
+        - IpProtocol: udp
+          FromPort: '0'
+          ToPort: '0'
+          SourceSecurityGroupId: !Ref KGFLIXBastionHostSG
+
+  KGCINEMAWebSG:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDescription: KGCINEMAWebSG
+        VpcId: !Ref KGCINEMAVPC
+        SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          SourceSecurityGroupId: !Ref KGCINEMAELBSG
+        - IpProtocol: tcp
+          FromPort: '443'
+          ToPort: '443'
+          SourceSecurityGroupId: !Ref KGCINEMAELBSG
+        - IpProtocol: tcp
+          FromPort: '0'
+          ToPort: '0'
+          SourceSecurityGroupId: !Ref KGCINEMABastionHostSG
+        - IpProtocol: udp
+          FromPort: '0'
+          ToPort: '0'
+          SourceSecurityGroupId: !Ref KGCINEMABastionHostSG
+
+  KGFLIXWEBLaunchConfiguration:           
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      ImageId: ami-086eee4e12dd93f7c
+      InstanceType: t2.micro
+      KeyName: !Ref KGFLIX
+      LaunchConfigurationName: KGFLIX_WEB_AS
+      SecurityGroups: 
+        - !Ref KGFLIXWebSG
+      UserData:
+        Fn::Base64:
+          !Sub | 
+            #!/bin/bash
+            sudo yum update
+            sudo yum -y install unzip
+            sudo yum install -y http*
+            sudo yum install -y php
+            sudo wget --no-check-certificate 'https://docs.google.com/uc?export=download&id=1VQVbIPiuhs3aiioLaxlI1pBDjTcoQ-7s' -O kgcinema1.zip
+            sudo unzip kgcinema1.zip -d /var/www/html/
+            sudo systemctl restart httpd
+
+  KGCINEMAWEBLaunchConfiguration:           
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      ImageId: ami-086eee4e12dd93f7c
+      InstanceType: t2.micro
+      KeyName: !Ref KGFLIX
+      LaunchConfigurationName: KGCINEMA_WEB_AS
+      SecurityGroups: 
+        - !Ref KGCINEMAWebSG
+      UserData:
+        Fn::Base64:
+          !Sub | 
+            #!/bin/bash
+            sudo yum update
+            sudo yum -y install unzip
+            sudo yum install -y http*
+            sudo yum install -y php
+            sudo wget --no-check-certificate 'https://docs.google.com/uc?export=download&id=1VQVbIPiuhs3aiioLaxlI1pBDjTcoQ-7s' -O kgcinema1.zip
+            sudo unzip kgcinema1.zip -d /var/www/html/
+            sudo systemctl restart httpd
+
+  KGFLIXWEBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties: 
+      Name: KGFLIXWEBTargetGroup
+      Port: 80
+      Protocol: "HTTP"
+      VpcId: !Ref KGFLIXVPC 
+
+  KGCINEMAWEBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties: 
+      Name: KGCINEMAWEBTargetGroup
+      Port: 80
+      Protocol: "HTTP"
+      VpcId: !Ref KGCINEMAVPC       
+
+  KGFLIXAutoScaling:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    DependsOn: KGFLIXVPC
+    Properties: 
+      AutoScalingGroupName: KGFLIXAutoScaling
+      VPCZoneIdentifier: 
+        - !Ref KGFLIXPrivateSubnet1
+        - !Ref KGFLIXPrivateSubnet3
+      Cooldown: 10
+      DesiredCapacity: 2
+      LaunchConfigurationName: !Ref KGFLIXWEBLaunchConfiguration
+      MaxSize: 2
+      MinSize: 2
+      TargetGroupARNs: 
+        - !Ref KGFLIXWEBTargetGroup
+      Tags:
+        - Key: Name
+          Value: KGFLIX-WEB-AS
+          PropagateAtLaunch: true
+
+  KGCINEMAAutoScaling:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    DependsOn: KGCINEMAVPC
+    Properties: 
+      AutoScalingGroupName: KGCINEMAAutoScaling
+      VPCZoneIdentifier: 
+        - !Ref KGCINEMAPrivateSubnet1
+        - !Ref KGCINEMAPrivateSubnet3
+      Cooldown: 10
+      DesiredCapacity: 2
+      LaunchConfigurationName: !Ref KGCINEMAWEBLaunchConfiguration
+      MaxSize: 2
+      MinSize: 2
+      TargetGroupARNs: 
+        - !Ref KGCINEMAWEBTargetGroup
+      Tags:
+        - Key: Name
+          Value: KGCINEMA-WEB-AS
+          PropagateAtLaunch: true
+      
+  KGFLIXASGPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref KGFLIXAutoScaling
+      PolicyType: TargetTrackingScaling
+      TargetTrackingConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ASGAverageCPUUtilization
+        TargetValue: 50
+
+  KGCINEMAASGPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref KGCINEMAAutoScaling
+      PolicyType: TargetTrackingScaling
+      TargetTrackingConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ASGAverageCPUUtilization
+        TargetValue: 50
+        
+  KGFLIXELBSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: KGFLIXSG
+      VpcId: !Ref KGFLIXVPC
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: '80'
+        ToPort: '80'
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: '443'
+        ToPort: '443'
+        CidrIp: 0.0.0.0/0
+
+  KGCINEMAELBSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: KGCINEMASG
+      VpcId: !Ref KGCINEMAVPC
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: '80'
+        ToPort: '80'
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: '443'
+        ToPort: '443'
+        CidrIp: 0.0.0.0/0
+
+  KGFLIXDBSecurityGroup:                             # create security group
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: KGFLIXDBSG
+      VpcId: !Ref KGFLIXVPC
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: '3306'
+        ToPort: '3306'
+        SourceSecurityGroupId: !Ref KGFLIXWebSG
+      - IpProtocol: tcp
+        FromPort: '3306'
+        ToPort: '3306'
+        SourceSecurityGroupId: !Ref KGFLIXBastionHostSG
+      - IpProtocol: tcp
+        FromPort: '22'
+        ToPort: '22'
+        SourceSecurityGroupId: !Ref KGFLIXBastionHostSG
+
+  KGCINEMADBSecurityGroup:                             # create security group
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: KGCINEMADBSG
+      VpcId: !Ref KGCINEMAVPC
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: '3306'
+        ToPort: '3306'
+        SourceSecurityGroupId: !Ref KGCINEMAWebSG
+      - IpProtocol: tcp
+        FromPort: '3306'
+        ToPort: '3306'
+        SourceSecurityGroupId: !Ref KGCINEMABastionHostSG
+      - IpProtocol: tcp
+        FromPort: '22'
+        ToPort: '22'
+        SourceSecurityGroupId: !Ref KGCINEMABastionHostSG
+
+  KGFLIXDBSubnetGroup:
+    Type: "AWS::RDS::DBSubnetGroup"
+    Properties:
+      DBSubnetGroupDescription: KGFLIXDBSub
+      DBSubnetGroupName: KGFLIXDBSubnetGroup
+      SubnetIds:
+        - !Ref KGFLIXPrivateSubnet2
+        - !Ref KGFLIXPrivateSubnet4
+
+  KGCINEMADBSubnetGroup:
+    Type: "AWS::RDS::DBSubnetGroup"
+    Properties:
+      DBSubnetGroupDescription: KGCINEMADBSub
+      DBSubnetGroupName: KGCINEMADBSubnetGroup
+      SubnetIds:
+        - !Ref KGCINEMAPrivateSubnet2
+        - !Ref KGCINEMAPrivateSubnet4
+         
+  KGFLIXMasterDB:
+    Type: 'AWS::RDS::DBInstance'
+    Properties:
+      DBName: Webdb
+      MasterUsername: !Ref DBID
+      MasterUserPassword: !Ref DBPW
+      Engine: mysql
+      DBInstanceClass: db.t2.micro
+      StorageType: gp2
+      PubliclyAccessible: false
+      AllocatedStorage: "10"
+      DBInstanceIdentifier: WEBDB 
+      MultiAZ: false 
+      VPCSecurityGroups: 
+        - !Ref KGFLIXDBSecurityGroup
+      DBSubnetGroupName: !Ref KGFLIXDBSubnetGroup
+
+  KGCINEMAMasterDB:
+    Type: 'AWS::RDS::DBInstance'
+    Properties:
+      DBName: Webdb
+      MasterUsername: !Ref DBID
+      MasterUserPassword: !Ref DBPW
+      Engine: mysql
+      DBInstanceClass: db.t2.micro
+      StorageType: gp2
+      PubliclyAccessible: false
+      AllocatedStorage: "10"
+      DBInstanceIdentifier: WEBDB 
+      MultiAZ: false 
+      VPCSecurityGroups: 
+        - !Ref KGCINEMADBSecurityGroup
+      DBSubnetGroupName: !Ref KGCINEMADBSubnetGroup
+
+  KGFLIXRDSReplica:
+    Type: AWS::RDS::DBInstance
+    DependsOn: KGFLIXMasterDB
+    Properties:
+      SourceDBInstanceIdentifier: !Ref KGFLIXMasterDB
+      DBInstanceIdentifier: WEBRDSReplica
+      DBInstanceClass: db.t2.micro
+      StorageType: gp2
+      PubliclyAccessible: false
+      VPCSecurityGroups: 
+        - !Ref KGFLIXDBSecurityGroup
+      DBSubnetGroupName: !Ref KGFLIXDBSubnetGroup
+
+  KGCINEMARDSReplica:
+    Type: AWS::RDS::DBInstance
+    DependsOn: KGCINEMAMasterDB
+    Properties:
+      SourceDBInstanceIdentifier: !Ref KGCINEMAMasterDB
+      DBInstanceIdentifier: WEBRDSReplica
+      DBInstanceClass: db.t2.micro
+      StorageType: gp2
+      PubliclyAccessible: false
+      VPCSecurityGroups: 
+        - !Ref KGCINEMADBSecurityGroup
+      DBSubnetGroupName: !Ref KGCINEMADBSubnetGroup
+
+  KGFLIXALB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: KGFLIXALB
+      Subnets:
+        - !Ref KGFLIXPublicSubnet1
+        - !Ref KGFLIXPublicSubnet2
+      SecurityGroups:
+        - !Ref KGFLIXELBSG
+
+  KGCINEMAALB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: KGCINEMAALB
+      Subnets:
+        - !Ref KGCINEMAPublicSubnet1
+        - !Ref KGCINEMAPublicSubnet2
+      SecurityGroups:
+        - !Ref KGCINEMAELBSG
+
+  KGFLIXALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref KGFLIXALB
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref KGFLIXWEBTargetGroup
+
+  KGCINEMAALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref KGCINEMAALB
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref KGCINEMAWEBTargetGroup
+
+  NATSecurityGroup1:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable custom tcp custom udp
+      VpcId: !Ref KGFLIXVPC
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: '0'
+        ToPort: '1023'
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: udp
+        FromPort: '0'
+        ToPort: '1023'
+        CidrIp: 0.0.0.0/0
+
+  NatInstance1:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      ImageId: ami-00295862c013bede0
+      KeyName: !Ref KGFLIX
+      Tags:
+        - Key: Name
+          Value: NAT-Instance1
+      SourceDestCheck: 'false'
+      NetworkInterfaces:
+        - DeviceIndex: 0
+          SubnetId: !Ref KGFLIXPublicSubnet1
+          GroupSet:
+          - !Ref NATSecurityGroup1
+          AssociatePublicIpAddress: true
+      
+
+  NatInstance2:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      ImageId: ami-00295862c013bede0
+      KeyName: !Ref KGFLIX
+      Tags:
+        - Key: Name
+          Value: NAT-Instance2
+      SourceDestCheck: 'false'
+      NetworkInterfaces:
+        - DeviceIndex: 0
+          SubnetId: !Ref KGFLIXPublicSubnet2
+          GroupSet:
+          - !Ref NATSecurityGroup1
+          AssociatePublicIpAddress: true
+      
+  
+  NATSecurityGroup2:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable custom tcp custom udp
+      VpcId: !Ref KGCINEMAVPC
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: '0'
+        ToPort: '1023'
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: udp
+        FromPort: '0'
+        ToPort: '1023'
+        CidrIp: 0.0.0.0/0
+
+  NatInstance3:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      ImageId: ami-00295862c013bede0
+      KeyName: !Ref KGFLIX
+      Tags:
+        - Key: Name
+          Value: NAT-Instance3
+      SourceDestCheck: 'false'
+      NetworkInterfaces:
+        - DeviceIndex: 0
+          SubnetId: !Ref KGCINEMAPublicSubnet1
+          GroupSet:
+          - !Ref NATSecurityGroup2
+          AssociatePublicIpAddress: true
+      
+
+  NatInstance4:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      ImageId: ami-00295862c013bede0
+      KeyName: !Ref KGFLIX
+      Tags:
+        - Key: Name
+          Value: NAT-Instance4
+      SourceDestCheck: 'false'
+      NetworkInterfaces:
+        - DeviceIndex: 0
+          SubnetId: !Ref KGCINEMAPublicSubnet2
+          GroupSet:
+          - !Ref NATSecurityGroup2
+          AssociatePublicIpAddress: true
+      
+          
+  KGFLIXBastionHostSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: KGFLIX Bastion Host SG
+      VpcId: !Ref KGFLIXVPC
+      SecurityGroupIngress:
+      - IpProtocol: 'all'
+        FromPort: '0'
+        ToPort: '0'
+        CidrIp: 0.0.0.0/0
+
+  KGCINEMABastionHostSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: KGCINEMA Bastion Host SG
+      VpcId: !Ref KGCINEMAVPC
+      SecurityGroupIngress:
+      - IpProtocol: 'all'
+        FromPort: '0'
+        ToPort: '0'
+        CidrIp: 0.0.0.0/0
+
+  KGFLIXBastionHost:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      ImageId: ami-086eee4e12dd93f7c
+      KeyName: !Ref KGFLIX
+      Tags:
+        - Key: Name
+          Value: KGFLIXBastionHost
+      NetworkInterfaces:
+        - DeviceIndex: 0
+          SubnetId: !Ref KGFLIXPublicSubnet1
+          GroupSet:
+          - !Ref KGFLIXBastionHostSG
+      UserData:
+        Fn::Base64:
+          !Sub |
+            #!/bin/bash
+            SECURE_ANSIBLE=$(expect -c "
+            set timeout 3
+            spawn sudo amazon-linux-extras install ansible2
+            expect \"Is this ok [y/d/N]:"
+            send \"y\r\"
+            expect eof
+            ")
+            echo "$SECURE_ANSIBLE"
+            sudo wget --no-check-certificate 'https://docs.google.com/uc?export=download&id=1dxGvrfwDAYyrxM5xsQ4iRXpOyM4nFR0v' -O KGFLIX.pem
+            sudo yum -y install expect
+            ansible-galaxy collection install ansible.posix
+            sed -i 's/#host_key_checking=False/host_key_checking=False/g' /etc/ansible/ansible.cfg
+            sudo wget --no-check-certificate 'https://docs.google.com/uc?export=download&id=1dxGvrfwDAYyrxM5xsQ4iRXpOyM4nFR0v' -O KGFLIX.pem
+            sudo chmod 400 KGFLIX.pem
+            
+  KGCINEMABastionHost:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      ImageId: ami-086eee4e12dd93f7c
+      KeyName: !Ref KGFLIX
+      Tags:
+        - Key: Name
+          Value: KGCINEMABastionHost
+      NetworkInterfaces:
+        - DeviceIndex: 0
+          SubnetId: !Ref KGCINEMAPublicSubnet1
+          GroupSet:
+          - !Ref KGCINEMABastionHostSG
+      UserData:
+        Fn::Base64:
+          !Sub |
+            #!/bin/bash
+            SECURE_ANSIBLE=$(expect -c "
+            set timeout 3
+            spawn sudo amazon-linux-extras install ansible2
+            expect \"Is this ok [y/d/N]:"
+            send \"y\r\"
+            expect eof
+            ")
+            echo "$SECURE_ANSIBLE"
+            sudo wget --no-check-certificate 'https://docs.google.com/uc?export=download&id=1dxGvrfwDAYyrxM5xsQ4iRXpOyM4nFR0v' -O KGFLIX.pem
+            sudo yum -y install expect
+            ansible-galaxy collection install ansible.posix
+            sed -i 's/#host_key_checking=False/host_key_checking=False/g' /etc/ansible/ansible.cfg
+            sudo wget --no-check-certificate 'https://docs.google.com/uc?export=download&id=1dxGvrfwDAYyrxM5xsQ4iRXpOyM4nFR0v' -O KGFLIX.pem
+            sudo chmod 400 KGFLIX.pem
+                
+  WebAdmin:
+    Type: 'AWS::IAM::User'
+    Properties:
+      LoginProfile:
+        Password: donghan11!@
+      Path: "/"
+      Policies:
+        - PolicyName: EC2FullAccess
+          PolicyDocument: {
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Action": "ec2:*",
+            "Effect": "Allow",
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "elasticloadbalancing:*",
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "cloudwatch:*",
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "autoscaling:*",
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "iam:CreateServiceLinkedRole",
+            "Resource": "*",
+            "Condition": {
+                "StringEquals": {
+                    "iam:AWSServiceName": [
+                        "autoscaling.amazonaws.com",
+                        "ec2scheduled.amazonaws.com",
+                        "elasticloadbalancing.amazonaws.com",
+                        "spot.amazonaws.com",
+                        "spotfleet.amazonaws.com",
+                        "transitgateway.amazonaws.com"
+                     ]
+                   }
+                }
+              }
+            ]
+         }
+  
+  DBAdmin:
+    Type: 'AWS::IAM::User'
+    Properties:
+      LoginProfile:
+        Password: donghan11!@
+      Path: "/"
+      Policies:
+        - PolicyName: RDSFullAccess
+          PolicyDocument: {
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Action": [
+                "rds:*",
+                "application-autoscaling:DeleteScalingPolicy",
+                "application-autoscaling:DeregisterScalableTarget",
+                "application-autoscaling:DescribeScalableTargets",
+                "application-autoscaling:DescribeScalingActivities",
+                "application-autoscaling:DescribeScalingPolicies",
+                "application-autoscaling:PutScalingPolicy",
+                "application-autoscaling:RegisterScalableTarget",
+                "cloudwatch:DescribeAlarms",
+                "cloudwatch:GetMetricStatistics",
+                "cloudwatch:PutMetricAlarm",
+                "cloudwatch:DeleteAlarms",
+                "ec2:DescribeAccountAttributes",
+                "ec2:DescribeAvailabilityZones",
+                "ec2:DescribeCoipPools",
+                "ec2:DescribeInternetGateways",
+                "ec2:DescribeLocalGatewayRouteTablePermissions",
+                "ec2:DescribeLocalGatewayRouteTables",
+                "ec2:DescribeLocalGatewayRouteTableVpcAssociations",
+                "ec2:DescribeLocalGateways",
+                "ec2:DescribeSecurityGroups",
+                "ec2:DescribeSubnets",
+                "ec2:DescribeVpcAttribute",
+                "ec2:DescribeVpcs",
+                "ec2:GetCoipPoolUsage",
+                "sns:ListSubscriptions",
+                "sns:ListTopics",
+                "sns:Publish",
+                "logs:DescribeLogStreams",
+                "logs:GetLogEvents",
+                "outposts:GetOutpostInstanceTypes"
+            ],
+            "Effect": "Allow",
+            "Resource": "*"
+        },
+        {
+            "Action": "pi:*",
+            "Effect": "Allow",
+            "Resource": "arn:aws:pi:*:*:metrics/rds/*"
+        },
+        {
+            "Action": "iam:CreateServiceLinkedRole",
+            "Effect": "Allow",
+            "Resource": "*",
+            "Condition": {
+                "StringLike": {
+                    "iam:AWSServiceName": [
+                        "rds.amazonaws.com",
+                        "rds.application-autoscaling.amazonaws.com"
+                    ]
+                }
+            }
+        }
+    ]
+  }
+
+  Ansible:
+    Type: 'AWS::IAM::User'
+    Properties:
+      LoginProfile:
+        Password: donghan11!@
+      Path: "/"
+      Policies:
+        - PolicyName: AdministratorAccess
+          PolicyDocument: {
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": "*",
+            "Resource": "*"
+        }
+      ]
+    }
